@@ -1,218 +1,225 @@
 <!DOCTYPE html>
 <!-- This file is used for debugging both server & client-side issues & initiating the GUI basis. -->
 <html>
-   <head>
-      <meta name="viewport" content="width=device-width, initial-scale=1" />
+<head>
+   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-      <style>
-      /* tags :: base : view-span, base-size, base-tint
-      /* ----------------------------------------------------------------------------------------------- */
+   <style>
+   /* tags :: base : view-span, base-size, base-tint
+   /* ----------------------------------------------------------------------------------------------- */
+      html,body
+      {
+         position:relative;
+         height:100%;
+         background:#2e3133;
+         font-size:1vw; /*  `rem` unit basis  */
+         font-family:Arial, Helvetica, sans-serif;
+         line-height:1.3vw;
+         color:#AAA;
+         overflow:hidden;
+         padding:0;
+         margin:0;
+      }
+   /* ----------------------------------------------------------------------------------------------- */
+
+
+
+
+   /* cond :: view : limit minimum base-size
+   /* ----------------------------------------------------------------------------------------------- */
+      @media screen and (max-width:1100px)
+      {
          html,body
          {
-            position:relative;
-            height:100%;
-            background:#2e3133;
-            font-size:1vw; /*  `rem` unit basis  */
-            font-family:Arial, Helvetica, sans-serif;
-            line-height:1.3vw;
-            color:#AAA;
-            overflow:hidden;
-            padding:0;
-            margin:0;
+            font-size:11px !important;
+            line-height:14px;
          }
-      /* ----------------------------------------------------------------------------------------------- */
+      }
+   /* ----------------------------------------------------------------------------------------------- */
 
 
 
 
-      /* cond :: view : limit minimum base-size
-      /* ----------------------------------------------------------------------------------------------- */
-         @media screen and (max-width:1100px)
-         {
-            html,body
-            {
-               font-size:11px !important;
-               line-height:14px;
-            }
-         }
-      /* ----------------------------------------------------------------------------------------------- */
+   /* tags :: base : standardize
+   /* ----------------------------------------------------------------------------------------------- */
+      div
+      {
+         display:block;
+         position:relative;
+         text-align:left;
+         vertical-align:top;
+         box-sizing:border-box;
+         padding:0;
+         margin:0;
+      }
+
+      ul
+      {
+         margin:0;
+         padding:0;
+         margin-left:1.5rem;
+         margin-top:0.5rem;
+      }
+
+      p
+      {
+         margin:0;
+         margin-top:1rem;
+      }
+
+      a
+      {
+         font-weight:bold;
+         cursor:pointer;
+         text-decoration:none;
+         color:#CCC;
+      }
+
+      a:hover
+      {
+         color:#EEE;
+         text-decoration:underline;
+      }
+   /* ----------------------------------------------------------------------------------------------- */
 
 
 
 
-      /* tags :: base : standardize
-      /* ----------------------------------------------------------------------------------------------- */
-         div
-         {
-            display:block;
-            position:relative;
-            text-align:left;
-            vertical-align:top;
-            box-sizing:border-box;
-            padding:0;
-            margin:0;
-         }
-
-         ul
-         {
-            margin:0;
-            padding:0;
-            margin-left:1.5rem;
-            margin-top:0.5rem;
-         }
-
-         p
-         {
-            margin:0;
-            margin-top:1rem;
-         }
-
-         a
-         {
-            font-weight:bold;
-            cursor:pointer;
-            text-decoration:none;
-            color:#CCC;
-         }
-
-         a:hover
-         {
-            color:#EEE;
-            text-decoration:underline;
-         }
-      /* ----------------------------------------------------------------------------------------------- */
+   /* clan :: dbugPane : dbug
+   /* ----------------------------------------------------------------------------------------------- */
+      .dbugPane
+      {
+         display:block;
+         width:100%;
+         height:100%;
+         background:#2e3133;
+         color:#AAA;
+         text-align:center;
+      }
+   /* ----------------------------------------------------------------------------------------------- */
 
 
 
 
-      /* clan :: dbugPane : dbug
-      /* ----------------------------------------------------------------------------------------------- */
-         .dbugPane
-         {
-            display:block;
-            width:100%;
-            height:100%;
-            background:#2e3133;
-            color:#AAA;
-            text-align:center;
-         }
-      /* ----------------------------------------------------------------------------------------------- */
+   /* clan :: dbugProc : test
+   /* ----------------------------------------------------------------------------------------------- */
+      .dbugProc
+      {
+         display:block;
+         position:absolute;
+         z-index:999999;
+         width:100%;
+         height:25%;
+         overflow:auto;
+         bottom:0px;
+         background:hsla(0,0%,5%,0.85);
+         padding-left:1rem;
+         font-size:0.8rem;
+         font-family:Liberation Mono,Consolas,Monaco,Lucida Console,DejaVu Sans Mono,monospace;
+         line-height:2rem;
+      }
+   /* ----------------------------------------------------------------------------------------------- */
 
 
 
 
-      /* clan :: dbugProc : test
-      /* ----------------------------------------------------------------------------------------------- */
-         .dbugProc
-         {
-            display:block;
-            position:absolute;
-            z-index:999999;
-            width:100%;
-            height:25%;
-            overflow:auto;
-            bottom:0px;
-            background:hsla(0,0%,5%,0.85);
-            padding-left:1rem;
-            font-size:0.8rem;
-            font-family:Liberation Mono,Consolas,Monaco,Lucida Console,DejaVu Sans Mono,monospace;
-            line-height:2rem;
-         }
-      /* ----------------------------------------------------------------------------------------------- */
+   /* clan :: dbug : fail
+   /* ----------------------------------------------------------------------------------------------- */
+      .FailNode
+      {
+         display:inline-block;
+         background:#3e1113;
+         color:#EEE;
+         border:0.17rem solid #5b1f21;
+         box-shadow:0rem 0.1rem 1rem rgba(0,0,0,0.3);
+         border-radius:0.3rem;
+         margin:1rem;
+         margin-top:4rem;
+         max-width:50rem;width:auto !important;width:50rem;
+         min-width:25rem;
+      }
 
+      .FailNode h1
+      {
+         display:block;
+         margin:0;
+         font-size:1.2rem;
+         line-height:1.8rem;
+         font-weight:bold;
+         padding: 0.4rem;
+         padding-left: 0.8rem;
+         border-bottom:1px solid #5e1113;
+      }
 
+      .FailNode div
+      {
+         background:#4c0911;
+         padding:1.2rem;
+         border-radius:0.2rem;
+      }
 
+      .FailNode div h2
+      {
+         margin:0;
+         margin-bottom:1rem;
+         font-size:1rem;
+         font-weight:bold;
+      }
 
-      /* clan :: dbug : fail
-      /* ----------------------------------------------------------------------------------------------- */
-         .FailNode
-         {
-            display:inline-block;
-            background:#3e1113;
-            color:#EEE;
-            border:0.17rem solid #5b1f21;
-            box-shadow:0rem 0.1rem 1rem rgba(0,0,0,0.3);
-            border-radius:0.3rem;
-            margin:1rem;
-            margin-top:4rem;
-            max-width:50rem;width:auto !important;width:50rem;
-            min-width:25rem;
-         }
+      .FailNode div ul
+      { white-space:nowrap; }
 
-         .FailNode h1
-         {
-            display:block;
-            margin:0;
-            font-size:1.2rem;
-            line-height:1.8rem;
-            font-weight:bold;
-            padding: 0.4rem;
-            padding-left: 0.8rem;
-            border-bottom:1px solid #5e1113;
-         }
+      .FailNode div a
+      { color:#EEE; }
 
-         .FailNode div
-         {
-            background:#4c0911;
-            padding:1.2rem;
-            border-radius:0.2rem;
-         }
+      .FailNode div p
+      { margin-bottom:1rem; }
+   /* ----------------------------------------------------------------------------------------------- */
+      .link
+      {
+         cursor:pointer;
+         border-bottom:1px solid rgba(0,0,0,0);
+      }
 
-         .FailNode div h2
-         {
-            margin:0;
-            margin-bottom:1rem;
-            font-size:1rem;
-            font-weight:bold;
-         }
+      .link:hover
+      { border-bottom:1px solid rgba(180,180,180,0.3); }
 
-         .FailNode div ul
-         { white-space:nowrap; }
+      pre
+      { margin:0; }
+   </style>
+</head>
 
-         .FailNode div a
-         { color:#EEE; }
-
-         .FailNode div p
-         { margin-bottom:1rem; }
-      /* ----------------------------------------------------------------------------------------------- */
-         .link
-         {
-            cursor:pointer;
-            border-bottom:1px solid rgba(0,0,0,0);
-         }
-
-         .link:hover
-         { border-bottom:1px solid rgba(180,180,180,0.3); }
-
-         pre
-         { margin:0; }
-      </style>
-   </head>
-
-   <body>
+<body>
 <!--- DBUG --->
-      <div class="dbugPane">
-         <noscript>
-            <div name="nojsFail" class="FailNode">
-               <h1>Browser Fail</h1>
-               <div>
-                  <h2>JavaScript is disabled</h2>
-                  <ul>
-                     <li>Your web browser is currently configured to ignore JavaScript</li>
-                     <li>JavaScript is a standard scripting language that is secure by design</li>
-                     <li>It is required to render the dynamic graphical components for this application</li>
-                     <li>Kindly enable JavaScript and hit refresh, or consult your technical advisor</li>
-                  </ul>
-                  <p>
-                     This issue is client-side, which cannot be resolved server-side.<br>
-                     Once you've enabled JavaScript you will be able to use this web application.
-                  </p>
-                  <span>Apologies for any inconvenience.</span>
-               </div>
+   <div id="initDbug" class="dbugPane">
+      <noscript>
+         <div name="nojsFail" class="FailNode">
+            <h1>Browser Fail</h1>
+            <div>
+               <h2>JavaScript is disabled</h2>
+               <ul>
+                  <li>Your web browser is currently configured to ignore JavaScript</li>
+                  <li>JavaScript is a standard scripting language that is secure by design</li>
+                  <li>It is required to render the dynamic graphical components for this application</li>
+                  <li>Kindly enable JavaScript and hit refresh, or consult your technical advisor</li>
+               </ul>
+               <p>
+                  This issue is client-side, which cannot be resolved server-side.<br>
+                  Once you've enabled JavaScript you will be able to use this web application.
+               </p>
+               <span>Apologies for any inconvenience.</span>
             </div>
-         </noscript>
-      </div>
+         </div>
+      </noscript>
+   </div>
+   <script>
+      var initDbug =  document.getElementById('initDbug');
+      initDbug.parentNode.removeChild(initDbug); initDbug=(void 0);
+   </script>
 <!--- DBUG --->
-   </body>
+
+<!--- AUTO --->
+<!-- IMPORT -->
+<!--- AUTO --->
+</body>
 </html>
-<script>document.body.innerHTML='';</script>

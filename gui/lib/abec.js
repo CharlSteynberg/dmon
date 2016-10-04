@@ -739,7 +739,7 @@
 
 
 
-   // glob :: func : dump - console.log -- `Dump` does `dump` + `Halt`
+   // glob :: func : dump - console.log -- `Dump` does `dump` + `Exit`
    // -----------------------------------------------------------------------------------------------------
       dump:function()
       { console.log.apply(console,[].slice.call(arguments)); },
@@ -747,7 +747,7 @@
       Dump:function()
       {
          dump.apply(null,[].slice.call(arguments));
-         Halt();
+         Exit();
       },
    // -----------------------------------------------------------------------------------------------------
 
@@ -2337,9 +2337,9 @@
 
          if (kind == HTMLNODE)
          {
-            if (isList(defn) && isHtmlNode(defn[0]))
+            if (isList(defn))
             {
-               defn.Each = function(item){ self.Insert(defn); };
+               defn.Each = function(item){ self.Insert(item); };
                return self;
             }
 

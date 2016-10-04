@@ -2,7 +2,7 @@
 // glob :: main
 // --------------------------------------------------------------------------------------------------------
    "use strict";
-   require('../lib/abec.js');
+   require('../lib/abec.njs');
 
    Main.Conf = Import('/cfg/dmon.v');
    Main.Mime = Import('/cfg/mime.v');
@@ -10,7 +10,24 @@
    View.Html = Path.Browse('../gui/auto.htm');
    View.LsFl = Path.Browse('../gui/lib/lsfl.js');
 
-   View.Html+= '<script>'+Path.Browse('../gui/lib/abec.js')+'</script>\n';
+   View.Fail = function(resp,code)
+   {
+      resp.statusCode = code;
+      resp.end();
+   };
+
+   View.Init = function(resp,embd)
+   {
+      var text = View.Html.split('<!-- IMPORT -->');
+
+      text[0]+= '<script>'+Path.Browse('../gui/lib/abec.js')+'</script>\n';
+      text[0]+= embd;
+
+      text = text.join('');
+
+      resp.writeHead(200, {'Content-Type':'text/html; charset=utf-8'});
+      resp.end(text);
+   };
 // --------------------------------------------------------------------------------------------------------
 
 
@@ -96,8 +113,7 @@
 
             if (!Path.Exists(path))
             {
-               rsp.statusCode = 404;
-               rsp.end();
+               View.Fail(rsp,404);
                return;
             }
 
@@ -116,7 +132,6 @@
                   {
                      path = path+'/'+file;
                      perm = Path.Access(path);
-                     type = 'file';
                      return file;
                   }
                }
@@ -124,8 +139,7 @@
 
             if (!type || (perm == 'f') || ((type == 'fold') && !indx && !conf.DirViews))
             {
-               rsp.statusCode = 403;
-               rsp.end();
+               View.Fail(rsp,403);
                return;
             }
 
@@ -136,6 +150,7 @@
             if ((type == 'fold') && !indx)
             {
                list = Path.Browse(path);
+               text = '';
 
                list.forEach(function(item,indx)
                {
@@ -144,23 +159,46 @@
                   extn = ((type=='fold') ? type : ((item.split('.').pop()) || 'file'));
                   size = ((type=='fold') ? (Path.Browse(path+'/'+item)).length : stat.size);
 
-                  list[indx] = // obj
+                  item = // obj
                   {
                      Icon:(View.Mico[extn] || View.Mico['file']),
                      Path:(path.split(dom)[1]+'/'+item).split('//').join('/'),
                      Name:item,
                      Size:((type=='fold') ? (size+' Itm') : (+(((size /1024) /100).toFixed(3))+' Mb')),
                   };
+
+                  text+= '<table class="mrgn-01 link" style="width:50%" onclick="Goto(\''+item.Path+'\')"><tr>';
+                  text+= '<td class="size-02" style="width:2rem"><i class="icon-'+item.Icon+'"></i></td>';
+                  text+= '<td class="size-01" style="width:auto">'+item.Path+'</td>';
+                  text+= '<td class="text-rigt" style="width:10rem; font-size:1rem; opacity:0.6"><pre>'+item.Size+'</pre></td>';
+                  text+= '</tr></table>';
                });
 
-               list = JSON.stringify(list);
-               text = (View.Html+'<script>\nwindow.ViewData={FoldList:'+list+'};\n'+View.LsFl+'</script>');
-               size = text.length;
-
-               rsp.writeHead(200, {'Content-Type':'text/html; charset=utf-8'});
-               rsp.end(text);
+               View.Init(rsp,text);
                return;
             }
+
+            if ((type == 'fold') && (indx != 'index.html'))
+            {
+               if (indx == 'auto.njs')
+               {
+                  (function(req,rsp){ Import(path); }(req,rsp));
+                  return;
+               }
+
+               if (indx == 'auto.htm')
+               {
+                  View.Init(rsp,Path.Browse(path));
+                  return;
+               }
+
+               if (indx == 'auto.js')
+               {
+                  View.Init(rsp,'<script>'+Path.Browse(path)+'</script>');
+                  return;
+               }
+            }
+
 
             rsp.writeHead(200, {'Content-Type':mime});
             Fsys.createReadStream(path).pipe(rsp);
