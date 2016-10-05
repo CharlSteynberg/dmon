@@ -6,17 +6,12 @@
 
    Main.Conf = Import('/cfg/dmon.v');
    Main.Mime = Import('/cfg/mime.v');
+   Http.Code = Import('/cfg/code.v');
    View.Mico = Import('/cfg/mico.v');
    View.Html = Path.Browse('../gui/auto.htm');
    View.LsFl = Path.Browse('../gui/lib/lsfl.js');
 
-   View.Fail = function(resp,code)
-   {
-      resp.statusCode = code;
-      resp.end();
-   };
-
-   View.Init = function(resp,embd)
+   View.Init = function(resp,embd,code)
    {
       var text = View.Html.split('<!-- IMPORT -->');
 
@@ -24,10 +19,27 @@
       text[0]+= embd;
 
       text = text.join('');
+      code = (code || 200);
 
-      resp.writeHead(200, {'Content-Type':'text/html; charset=utf-8'});
+      resp.writeHead(code, {'Content-Type':'text/html; charset=utf-8'});
       resp.end(text);
    };
+
+   View.Fail = function(resp,code)
+   {
+      code = (Http.Code[code] ? code : 500);
+
+      var name = 'Server';
+      var mesg = (code+' - '+Http.Code[code]);
+      var tips = //
+      [
+         'make sure the requested path exists and that you have permission to access it',
+         'if the problem persists, please contact support and it will be fixed promptly'
+      ];
+
+      var text = "Fail({Name:'"+name+"', Mesg:'"+mesg+"', Tips:['"+tips[0]+"', '"+tips[1]+"']});";
+      View.Init(resp,'<script>'+text+'</script>',code);
+   }
 // --------------------------------------------------------------------------------------------------------
 
 

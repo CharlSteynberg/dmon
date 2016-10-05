@@ -251,8 +251,8 @@
          for (var i=0; i<=grid; i++)
          {
             var unit = ((i < 10) ? ('0'+i) : (''+i));
-            var grat = +(1 + (grid / 100)).toFixed(2);
             var emsz = +((i < 1) ? 0.5 : (1 + (i * (grid / 100)))).toFixed(2);
+            var grat = +(emsz + (emsz / 5)).toFixed(2);
             var span = +((100 / grid) * i).toFixed(3);
 
             gtxt += '\n.size-'+unit+'{font-size:'+emsz+'rem !important; line-height:'+grat+'rem !important;}\n';
