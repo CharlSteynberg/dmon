@@ -4,27 +4,53 @@
    "use strict";
    require('../lib/abec.njs');
 
-   Main.Conf = Import('/cfg/dmon.v');
-   Main.Mime = Import('/cfg/mime.v');
-   Http.Code = Import('/cfg/code.v');
-   View.Mico = Import('/cfg/mico.v');
+   Main.Conf = Import('../cfg/dmon.v');
+   Main.Mime = Import('../cfg/mime.v');
+   Http.Code = Import('../cfg/code.v');
+   View.Mico = Import('../cfg/mico.v');
    View.Html = Path.Browse('../gui/auto.htm');
-   View.LsFl = Path.Browse('../gui/lib/lsfl.js');
+   View.Mods = [];
+// --------------------------------------------------------------------------------------------------------
 
+
+
+
+
+// glob :: View.Init
+// --------------------------------------------------------------------------------------------------------
    View.Init = function(resp,embd,code)
    {
       var text = View.Html.split('<!-- IMPORT -->');
+      var host;
 
-      text[0]+= '<script>'+Path.Browse('../gui/lib/abec.js')+'</script>\n';
-      text[0]+= embd;
+      text[0]+= '\n<script>'+Path.Browse('../gui/lib/abec.js')+'</script>\n';
 
-      text = text.join('');
       code = (code || 200);
+
+      if (code < 400)
+      {
+         host = Dmon.vHosts[resp.Host];
+
+         host.Mods.forEach(function(path)
+         {
+            text[0]+= '\n<script>'+Path.Browse(path)+'</script>\n';
+         });
+      }
+
+      text[0]+= embd;
+      text = text.join('');
 
       resp.writeHead(code, {'Content-Type':'text/html; charset=utf-8'});
       resp.end(text);
-   };
+   }
+// --------------------------------------------------------------------------------------------------------
 
+
+
+
+
+// glob :: View.Fail
+// --------------------------------------------------------------------------------------------------------
    View.Fail = function(resp,code)
    {
       code = (Http.Code[code] ? code : 500);
@@ -52,7 +78,7 @@
    {
       Update:function(list)
       {
-         var each,hpth,auth,hcfg,plat,htxt,hdlm,hnlc;
+         var each,hpth,auth,hcfg,plat,htxt,hdlm,hnlc,dpth,mods;
 
          list = (!list ? Conf.PathList : (((typeof list) == 'string') ? [list] : []));
          hpth = {win:'/Windows/System32/drivers/etc/hosts', lnx:'/etc/hosts', osx:undefined};
@@ -82,15 +108,44 @@
                auth = Path.Access(path);
 
                if (!auth || (auth == 'f')){ return; }
-               hcfg = (Path.Exists(path+'/.conf') ? Import(path+'/.conf') : {});
+               dpth = path+'/.dmon';
+               hcfg = {};
+
+               if (Path.Exists(dpth))
+               {
+                  if (Path.Exists(dpth+'/.conf'))
+                  { hcfg = (Import(dpth+'/.conf') || {}); }
+               }
+               else
+               { dpth = null; }
+
                hcfg.HttpPort = (hcfg.HttpPort || Conf.AutoPort);
                hcfg.DirViews = (hcfg.DirViews || Conf.DirViews);
 
                Dmon.vHosts[host] = // object
                {
+                  Name:host,
                   Path:path,
                   Conf:hcfg,
+                  Mods:[],
                };
+
+               if (dpth && Path.Exists(dpth+'/.mods'))
+               {
+                  mods = Path.Browse(dpth+'/.mods');
+                  mods.forEach(function(item)
+                  {
+                     var cpth = dpth+'/.mods/'+item+'/client.js';
+                     var spth = dpth+'/.mods/'+item+'/server.js';
+                  // console.log(spth);
+
+                     if (Path.Exists(spth))
+                     { require(spth); } // BAD IDEA !!! -- rather spawn separate child-process :: TODO
+
+                     if (Path.Exists(cpth))
+                     { Dmon.vHosts[host].Mods[Dmon.vHosts[host].Mods.length] = cpth; }
+                  });
+               }
 
                Dmon.Listen(hcfg.HttpPort);
             });
@@ -122,6 +177,8 @@
             root = host.Path;
             conf = host.Conf;
             path = (root+'/'+req.path).split('//').join('/');
+
+            rsp.Host = dom;
 
             if (!Path.Exists(path))
             {
@@ -286,17 +343,25 @@
       },
    };
 // --------------------------------------------------------------------------------------------------------
-Dmon.Listen(Conf.AutoPort);
-Dmon.Update();
 
-Conf.PathList.forEach(function(path)
-{
-   Fsys.watch(path,(type,refr)=>
+
+
+
+
+// glob :: init : initialize server & watch domain paths for events
+// --------------------------------------------------------------------------------------------------------
+   Dmon.Listen(Conf.AutoPort);
+   Dmon.Update();
+
+   Conf.PathList.forEach(function(path)
    {
-      if (refr)
+      Fsys.watch(path,(type,refr)=>
       {
-         if (refr.indexOf(' ') > -1){ return; }
-         Dmon.Update();
-      }
+         if (refr)
+         {
+            if (refr.indexOf(' ') < 0)
+            { Dmon.Update(); }
+         }
+      });
    });
-});
+// --------------------------------------------------------------------------------------------------------
