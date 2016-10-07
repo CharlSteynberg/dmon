@@ -2,173 +2,216 @@
 // glob :: main
 // --------------------------------------------------------------------------------------------------------
    "use strict";
-   require('../lib/abec.njs');
-
-   Main.Conf = Import('../cfg/dmon.v');
-   Main.Mime = Import('../cfg/mime.v');
-   Http.Code = Import('../cfg/code.v');
-   View.Mico = Import('../cfg/mico.v');
-   View.Html = Path.Browse('../gui/auto.htm');
-   View.Mods = [];
+   require('../lib/bios.njs');
+   Main.Conf = Import('../cfg');
 // --------------------------------------------------------------------------------------------------------
 
 
 
 
 
-// glob :: View.Init
+// extn :: Host config
 // --------------------------------------------------------------------------------------------------------
-   View.Init = function(resp,embd,code)
+   Host.Modify(Conf.host);
+   Host.HttpName = Path.Read(Host.RootPath)[0];
+   Host.RootPath = (Host.RootPath+'/'+Host.HttpName);
+   Host.InitHTML = Path.Read('../gui/auto.htm');
+   Host.DirsHTML = Path.Read('../gui/dirs.htm');
+
+
+   if (Path.Type(Host.RootPath+'/.dmon') == 'fold')
    {
-      var text = View.Html.split('<!-- IMPORT -->');
-      var host;
+      if (Path.IsAt(Host.RootPath+'/.dmon/.conf'))
+      { Host.Modify(Import(Host.RootPath+'/.dmon/.conf')); }
 
-      text[0]+= '\n<script>'+Path.Browse('../gui/lib/abec.js')+'</script>\n';
-
-      code = (code || 200);
-
-      if (code < 400)
-      {
-         host = Dmon.vHosts[resp.Host];
-
-         host.Mods.forEach(function(path)
-         {
-            text[0]+= '\n<script>'+Path.Browse(path)+'</script>\n';
-         });
-      }
-
-      text[0]+= embd;
-      text = text.join('');
-
-      resp.writeHead(code, {'Content-Type':'text/html; charset=utf-8'});
-      resp.end(text);
+      if (Path.Type(Host.RootPath+'/.dmon/.mods') == 'fold')
+      { Host.DmonMods = Path.Read(Host.RootPath+'/.dmon/.mods'); }
    }
-// --------------------------------------------------------------------------------------------------------
 
-
-
-
-
-// glob :: View.Fail
-// --------------------------------------------------------------------------------------------------------
-   View.Fail = function(resp,code)
+   Host.HttpMeth = // node :: alternative http-method names
    {
-      code = (Http.Code[code] ? code : 500);
-
-      var name = 'Server';
-      var mesg = (code+' - '+Http.Code[code]);
-      var tips = //
-      [
-         'make sure the requested path exists and that you have permission to access it',
-         'if the problem persists, please contact support and it will be fixed promptly'
-      ];
-
-      var text = "Fail({Name:'"+name+"', Mesg:'"+mesg+"', Tips:['"+tips[0]+"', '"+tips[1]+"']});";
-      View.Init(resp,'<script>'+text+'</script>',code);
-   }
+      GET:'PULL',    // pull file/records data
+      PUT:'PUSH',    // push upload/binary data
+      POST:'SAVE',   // save form data
+      DELETE:'DROP', // drop file/records data
+   };
 // --------------------------------------------------------------------------------------------------------
 
 
 
 
 
-// glob :: Dmon : server
+// extn :: Host HTTP events
 // --------------------------------------------------------------------------------------------------------
-   Main.Dmon = // object
+   Host.HttpEvnt = // node
    {
-      Update:function(list)
+   // evnt :: INIT : initialize GUI
+   // -----------------------------------------------------------------------------------------------------
+      INIT:function(requ,resp,embd)
       {
-         var each,hpth,auth,hcfg,plat,htxt,hdlm,hnlc,dpth,mods;
+         var prts = Host.InitHTML.split('<!-- IMPORT -->');
+         var code = (resp.Code || 200);
+         var mpth = (Host.RootPath+'/.dmon/.mods');
+         var mdpn = null;
 
-         list = (!list ? Conf.PathList : (((typeof list) == 'string') ? [list] : []));
-         hpth = {win:'/Windows/System32/drivers/etc/hosts', lnx:'/etc/hosts', osx:undefined};
-         plat = process.platform;
-         plat = ((plat.indexOf('win') > -1) ? 'win' : ((plat.indexOf('nux') > -1) ? 'lnx' : null));
-         hpth = ((!plat || !hpth[plat]) ? null : hpth[plat]);
-         hnlc = ((plat=='win') ? '\r\n' : '\n');
-         hdlm = (hnlc+hnlc+'# ---DMON--- #'+hnlc);
+         prts[0]+= '\n<script>'+Path.Read('../gui/lib/abec.js')+'</script>\n\n'+embd;
 
-         if (hpth)
+         if (Host.DmonMods && (code == 200))
          {
-            htxt = Path.Browse(hpth).split(hdlm);
-            htxt[1] = (hnlc+Host.Addr+'      '+Conf.AutoHost);
+            Host.DmonMods.Each = function(dmod)
+            {
+               mdpn = (mpth+'/'+dmod+'/client.js');
+
+               if (Path.Type(mdpn) == 'file')
+               { prts[0]+= '\n<script name="'+dmod+'_mod">\n'+Path.Read(mdpn)+'\n</script>\n'; }
+            };
          }
 
-         list.forEach(function(path)
+         resp.writeHead(code, {'Content-Type':'text/html; charset=utf-8'});
+         resp.end((prts.join('')));
+      },
+   // -----------------------------------------------------------------------------------------------------
+
+
+
+   // evnt :: FAIL : show server fail message
+   // -----------------------------------------------------------------------------------------------------
+      FAIL:function(requ,resp)
+      {
+         var code = (Conf.code[resp.Code] ? resp.Code : 500);
+         var name = 'Server';
+         var mesg = (code+' - '+Conf.code[code]);
+         var tips = //
+         [
+            'make sure the requested path exists and that you have permission to access it',
+            'if the problem persists, please contact support and it will be fixed promptly'
+         ];
+
+         var text = "Fail({Name:'"+name+"', Mesg:'"+mesg+"', Tips:['"+tips[0]+"', '"+tips[1]+"']});";
+         this.INIT(requ,resp,'<script>'+text+'</script>');
+      },
+   // -----------------------------------------------------------------------------------------------------
+
+
+
+   // evnt :: LIST : (GET) show folder items if dir-indexing is true
+   // -----------------------------------------------------------------------------------------------------
+      LIST:function(requ,resp)
+      {
+         var path,auth,code,list,indx,html,dhtm,type,extn,size;
+
+         path = requ.Path;
+         auth = Path.Auth(path);
+         code = (!auth ? 404 : ((!Host.ViewDirs || (auth == 'f')) ? 403 : 200));
+         list = ((code == 200) ? Path.Read(path) : null);
+         html = '';
+         dhtm = Host.DirsHTML;
+
+         resp.Code = code;
+         if (code != 200){ this.FAIL(requ,resp); return; }
+
+
+         if (list.hasAny(Host.DirIndex))
          {
-            each = Path.Browse(path);
-            if (!each || (each.length < 1)){ return; }
+            indx = list.Find(Host.DirIndex);
+            indx = (!indx ? null : indx[1]);
 
-            each.forEach(function(host)
+            if (indx)
             {
-               if (htxt){ htxt[1] += (hnlc+Host.Addr+'      '+host); }
-               if (Dmon.vHosts[host]){ return; }
+               path = (path+'/'+indx).Swap('//','/');
+               extn = indx.split('.').pop();
+               auth = Path.Auth(path);
 
-               path = (path+'/'+host).split('//').join('/');
-               auth = Path.Access(path);
-
-               if (!auth || (auth == 'f')){ return; }
-               dpth = path+'/.dmon';
-               hcfg = {};
-
-               if (Path.Exists(dpth))
+               if (!auth || (auth == 'f'))
                {
-                  if (Path.Exists(dpth+'/.conf'))
-                  { hcfg = (Import(dpth+'/.conf') || {}); }
-               }
-               else
-               { dpth = null; }
-
-               hcfg.HttpPort = (hcfg.HttpPort || Conf.AutoPort);
-               hcfg.DirViews = (hcfg.DirViews || Conf.DirViews);
-
-               Dmon.vHosts[host] = // object
-               {
-                  Name:host,
-                  Path:path,
-                  Conf:hcfg,
-                  Mods:[],
-               };
-
-               if (dpth && Path.Exists(dpth+'/.mods'))
-               {
-                  mods = Path.Browse(dpth+'/.mods');
-                  mods.forEach(function(item)
-                  {
-                     var cpth = dpth+'/.mods/'+item+'/client.js';
-                     var spth = dpth+'/.mods/'+item+'/server.js';
-                  // console.log(spth);
-
-                     if (Path.Exists(spth))
-                     { require(spth); } // BAD IDEA !!! -- rather spawn separate child-process :: TODO
-
-                     if (Path.Exists(cpth))
-                     { Dmon.vHosts[host].Mods[Dmon.vHosts[host].Mods.length] = cpth; }
-                  });
+                  requ.Code = (!auth ? 404 : 403);
+                  this.FAIL(requ,resp);
+                  return;
                }
 
-               Dmon.Listen(hcfg.HttpPort);
+               if (extn == 'html')
+               {
+                  resp.writeHead(200, {'Content-Type':'text/html; charset=utf-8'});
+                  resp.end(Path.Read(path));
+                  return;
+               }
+
+               html = Path.Read(path);
+               html = ((extn == 'js') ? ('\n<script>\n'+html+'\n</script>\n') : html);
+               this.INIT(requ,resp,html);
+               return;
+            }
+         }
+
+         list.forEach(function(item,indx)
+         {
+            type = Path.Type(path+'/'+item);
+            extn = ((type=='fold') ? type : ((item.split('.').pop()) || 'file'));
+            size = Path.Size(path+'/'+item);
+
+            html+= dhtm.Swap
+            ({
+               '<{PATH}>':(path.split(Host.HttpName)[1]+'/'+item).Swap('//','/'),
+               '<{ICON}>':(Conf.mico[extn] || Conf.mico['file']),
+               '<{NAME}>':item,
+               '<{SIZE}>':((type=='fold') ? (size+' Itm') : (+(((size /1024) /100).toFixed(3))+' Mb')),
             });
          });
 
-         if (hpth)
-         {
-            try
-            { Fsys.writeFileSync(hpth,htxt.join(hdlm)); }
-            catch(e)
-            {
-               console.log('failed writing vhosts to `'+hpth+'`');
-               process.exit(1);
-            }
-         }
+         this.INIT(requ,resp,html);
+         return;
       },
+   // -----------------------------------------------------------------------------------------------------
 
 
 
-      Invoke:
+   // evnt :: PULL : (GET) serve (stream) data/contents - client pulls data
+   // -----------------------------------------------------------------------------------------------------
+      PULL:function(requ,resp)
       {
-         GET:function(dom,req,rsp)
+         var path,extn,mime,auth;
+
+         path = requ.Path;
+         extn = path.split('.').pop();
+         mime = (Conf.mime[extn] || Conf.mime['bin']);
+         auth = Path.Auth(path);
+
+         if (!auth || (auth == 'f'))
          {
+            requ.Code = (!auth ? 404 : 403);
+            this.FAIL(requ,resp);
+            return;
+         }
+
+         resp.writeHead(200, {'Content-Type':mime});
+         Fsys.createReadStream(path).pipe(resp);
+      },
+   // -----------------------------------------------------------------------------------------------------
+
+
+
+   // evnt :: PUSH : (PUT/POST) upload (receive) data/contents - client pushes data
+   // -----------------------------------------------------------------------------------------------------
+      PUSH:function(requ,resp)
+      {
+
+      },
+   // -----------------------------------------------------------------------------------------------------
+   }
+// --------------------------------------------------------------------------------------------------------
+
+
+
+
+// tick :: http events
+// --------------------------------------------------------------------------------------------------------
+   Bios({http:(Host.HttpName+':'+Host.HttpPort)}).Listen({}); // defaults
+// --------------------------------------------------------------------------------------------------------
+
+
+
+/*
+
             var host,root,conf,path,perm,stat,type,indx,file,extn,mime,size,base,text,list;
 
             dom = ((dom != Host.Addr) ? dom : Conf.AutoHost);
@@ -236,11 +279,11 @@
                      Size:((type=='fold') ? (size+' Itm') : (+(((size /1024) /100).toFixed(3))+' Mb')),
                   };
 
-                  text+= '<table class="mrgn-01 link" style="width:50%" onclick="Goto(\''+item.Path+'\')"><tr>';
-                  text+= '<td class="size-02" style="width:2rem"><i class="icon-'+item.Icon+'"></i></td>';
-                  text+= '<td class="size-01" style="width:auto">'+item.Path+'</td>';
-                  text+= '<td class="text-rigt" style="width:10rem; font-size:1rem; opacity:0.6"><pre>'+item.Size+'</pre></td>';
-                  text+= '</tr></table>';
+                  html+= '<table class="mrgn-01 link" style="width:50%" onclick="Goto(\''+item.Path+'\')"><tr>';
+                  html+= '<td class="size-02" style="width:2rem"><i class="icon-'+item.Icon+'"></i></td>';
+                  html+= '<td class="size-01" style="width:auto">'+item.Path+'</td>';
+                  html+= '<td class="text-rigt" style="width:10rem; font-size:1rem; opacity:0.6"><pre>'+item.Size+'</pre></td>';
+                  html+= '</tr></table>';
                });
 
                View.Init(rsp,text);
@@ -271,97 +314,5 @@
 
             rsp.writeHead(200, {'Content-Type':mime});
             Fsys.createReadStream(path).pipe(rsp);
-         },
 
-
-         SET:function(dom,req,rsp)
-         {
-
-         },
-      },
-
-
-
-      Listen:function(port)
-      {
-         if (this.live[(port+'')]){ return; }
-
-         this.live[(port+'')] = Http.createServer(function(req,rsp)
-         {
-            var vdom,meth,prts,path,extn,vars;
-
-            vdom = req.headers.host;
-            meth = req.method;
-            prts = req.url.split('?');
-            path = prts[0];
-            vars = (function(resl)
-            {
-               resl = {};
-               if (!prts[1]){ return resl; }
-               prts = prts[1].split('+').join(' ');
-               prts = prts.split('&');
-
-               prts.forEach(function(item)
-               {
-                  item = item.split('=');
-                  resl[item[0]] = (item[1] ? decodeURIComponent(item[1]) : '');
-               });
-
-               return resl;
-            }());
-
-            req.path = path;
-
-            if (Dmon.Invoke.hasOwnProperty(meth))
-            {
-               Dmon.Invoke[meth](vdom,req,rsp);
-               return;
-            }
-
-            rsp.statusCode = 405;
-            rsp.end();
-         }).listen(port,Host.Addr);
-      }
-      .bind
-      ({
-         live:{},
-      }),
-
-
-
-      vHosts:
-      {
-         [Conf.AutoHost]:
-         {
-            Path:((__filename).split('C:').join('').split('\\').join('/').split('/run/dmon.js')[0]+'/gui'),
-            Conf:
-            {
-               HttpPort:Conf.AutoPort,
-               DirViews:Conf.DirViews,
-            },
-         }
-      },
-   };
-// --------------------------------------------------------------------------------------------------------
-
-
-
-
-
-// glob :: init : initialize server & watch domain paths for events
-// --------------------------------------------------------------------------------------------------------
-   Dmon.Listen(Conf.AutoPort);
-   Dmon.Update();
-
-   Conf.PathList.forEach(function(path)
-   {
-      Fsys.watch(path,(type,refr)=>
-      {
-         if (refr)
-         {
-            if (refr.indexOf(' ') < 0)
-            { Dmon.Update(); }
-         }
-      });
-   });
-// --------------------------------------------------------------------------------------------------------
+*/
